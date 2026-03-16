@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>行政管理 - 功能全齊版</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; padding: 20px; background: #f4f7f9; margin-top: 0; }
+        /* 導航列樣式 */
+        .nav-bar { background: #333; padding: 10px 20px; display: flex; align-items: center; gap: 15px; margin: -20px -20px 20px -20px; }
+        .btn-home { color: white; text-decoration: none; font-weight: bold; background: #555; padding: 5px 12px; border-radius: 4px; font-size: 14px; transition: 0.3s; }
+        .btn-home:hover { background: #666; }
+        .nav-title { color: #ccc; font-size: 14px; }
+
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .tabs { border-bottom: 2px solid #ddd; margin-bottom: 20px; }
+        .tab-btn { padding: 10px 20px; cursor: pointer; border: none; background: none; font-weight: bold; color: #666; }
+        .tab-btn.active { color: #1a73e8; border-bottom: 2px solid #1a73e8; }
+        .tab-content { display: none; padding: 10px 0; }
+        .tab-content.active { display: block; }
+        
+        /* 矩陣工具列 */
+        .matrix-tools { background: #eee; padding: 10px; border-radius: 5px; margin-bottom: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+        .matrix-wrapper { overflow: auto; max-height: 65vh; border: 1px solid #ccc; }
+        table { border-collapse: separate; border-spacing: 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; min-width: 110px; background: white; }
+
+        .cb { transform: scale(1.8); cursor: pointer; }
+
+        thead th { position: sticky; top: 0; z-index: 10; background: #eee; }
+        .count-row-top td { position: sticky; top: 60px; z-index: 10; background: #e3f2fd !important; font-weight: bold; color: #1976d2; border-bottom: 2px solid #1a73e8; }
+
+        .sticky-col-1 { position: sticky; left: 0; z-index: 11; background: #fff; font-weight: bold; border-right: 1px solid #ddd; }
+        .sticky-col-2 { position: sticky; left: 110px; z-index: 11; background: #fffde7 !important; color: #d32f2f; font-weight: bold; border-right: 2px solid #1a73e8; }
+
+        thead th.sticky-col-1, thead th.sticky-col-2 { z-index: 12; top: 0; }
+        .count-row-top td.sticky-col-1, .count-row-top td.sticky-col-2 { z-index: 12; top: 60px; }
+
+        /* 年級分色 */
+        .lvl-p1 { background-color: #ffebee !important; }
+        .lvl-p2 { background-color: #f3e5f5 !important; }
+        .lvl-p3 { background-color: #e8eaf6 !important; }
+        .lvl-p4 { background-color: #e1f5fe !important; }
+        .lvl-p5 { background-color: #e8f5e9 !important; }
+        .lvl-p6 { background-color: #fffde7 !important; }
+
+        .btn { padding: 8px 15px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-blue { background: #1a73e8; color: white; }
+        .btn-green { background: #34a853; color: white; }
+        .btn-orange { background: #f39c12; color: white; }
+        .btn-red { background: #d32f2f; color: white; }
+        .btn-gray { background: #7f8c8d; color: white; }
+
+        #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); display: none; justify-content: center; align-items: center; z-index: 999; }
+        
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar no-print">
+    <a href="index.html" class="btn-home">🏠 返主頁</a>
+    <span class="nav-title">牽引班管理系統 > 基礎設定 (Super Admin)</span>
+</div>
+
+<div id="loader">⌛ 同步中...</div>
+
+<div class="container">
+    <h2>行政管理 (全功能優化版)</h2>
+    
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('staffTab')">老師名單</button>
+        <button class="tab-btn" onclick="showTab('topicTab')">課題定義</button>
+        <button class="tab-btn" onclick="showTab('capTab')">資格矩陣</button>
+    </div>
+
+    <div id="staffTab" class="tab-content active">
+        <div class="matrix-tools">
+            <input type="text" id="nT" placeholder="姓名"> 
+            <button class="btn btn-blue" onclick="doAdd('Staff_List',['nT'])">新增老師</button>
+            <button class="btn btn-gray" onclick="document.getElementById('fS').click()">📥 匯入老師 CSV</button>
+            <input type="file" id="fS" hidden onchange="doImport('Staff_List',this)">
+        </div>
+        <table id="sTable"><thead><tr><th>老師姓名</th><th>操作</th></tr></thead><tbody id="sBody"></tbody></table>
+    </div>
+
+    <div id="topicTab" class="tab-content">
+        <div class="matrix-tools">
+            <select id="tL"><option>P.1</option><option>P.2</option><option>P.3</option><option>P.4</option><option>P.5</option><option>P.6</option></select>
+            <input type="text" id="tC" placeholder="範疇"> 
+            <input type="text" id="tN" placeholder="課題名">
+            <button class="btn btn-blue" onclick="doAdd('Topic_Def',['tL','tC','tN'])">新增課題</button>
+            <button class="btn btn-gray" onclick="document.getElementById('fT').click()">📥 匯入課題 CSV</button>
+            <input type="file" id="fT" hidden onchange="doImport('Topic_Def',this)">
+        </div>
+        <table id="tTable"><thead><tr><th>級別</th><th>範疇</th><th>課題</th><th>操作</th></tr></thead><tbody id="tBody"></tbody></table>
+    </div>
+
+    <div id="capTab" class="tab-content">
+        <div class="matrix-tools">
+            <button class="btn btn-green" onclick="toggleAllChecks(true)">✅ 全選</button>
+            <button class="btn btn-red" onclick="toggleAllChecks(false)">❌ 清空</button>
+            <div style="border-left: 2px solid #ccc; height: 25px; margin: 0 10px;"></div>
+            <button class="btn btn-orange" onclick="exportCapCSV()">📤 匯出 CSV</button>
+            <button class="btn btn-gray" onclick="document.getElementById('capCsvIn').click()">📥 匯入 CSV</button>
+            <input type="file" id="capCsvIn" hidden accept=".csv" onchange="importCapCSV(this)">
+        </div>
+
+        <div class="matrix-wrapper">
+            <table>
+                <thead id="cHead"></thead>
+                <tbody id="cBody"></tbody>
+            </table>
+        </div>
+        <button style="margin-top:20px; width:100%; padding:15px;" class="btn btn-blue" onclick="doSaveCaps()">💾 儲存所有修改至雲端</button>
+    </div>
+</div>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGR0AHDbjec97bnbcaKlex7niUEPO9L6dzdsEy_1VcxIoPUyJ--l1el6ZOZLZhrjnS/exec"; 
+
+    async function loadAll() {
+        toggleL(true);
+        try {
+            const res = await fetch(`${SCRIPT_URL}?action=getAdminData`);
+            const data = await res.json();
+            const capRes = await fetch(`${SCRIPT_URL}?action=getTeacherCaps`);
+            const caps = await capRes.json();
+            renderS(data.staffList);
+            renderT(data.topics);
+            renderM(data.staffList, data.topics, caps);
+        } catch(e) { alert("讀取失敗"); }
+        toggleL(false);
+    }
+
+    function renderS(list) {
+        document.getElementById('sBody').innerHTML = list.map(i => `<tr><td>${i.TeacherName}</td><td><button onclick="doDel('Staff_List','${i.TeacherName}')">🗑️</button></td></tr>`).join('');
+    }
+
+    function renderT(list) {
+        document.getElementById('tBody').innerHTML = list.map(i => `<tr><td>${i.Level}</td><td>${i.Category}</td><td>${i.TopicName}</td><td><button onclick="doDel('Topic_Def','${i.Level}|${i.TopicName}')">🗑️</button></td></tr>`).join('');
+    }
+
+    function renderM(staff, topics, caps) {
+        const h = document.getElementById('cHead');
+        const b = document.getElementById('cBody');
+        const getLvlClass = (lvl) => "lvl-" + lvl.toLowerCase().replace(".","");
+
+        h.innerHTML = `<tr><th class="sticky-col-1">老師</th><th class="sticky-col-2">總計</th>${topics.map(t => `<th class="${getLvlClass(t.Level)}">${t.Level}<br>${t.TopicName}</th>`).join('')}</tr>`;
+        
+        let topCountHtml = `<tr class="count-row-top"><td class="sticky-col-1">課題總計</td><td class="sticky-col-2" id="gT">0</td>${topics.map((t, i) => `<td class="col-t" id="col-t-${i}">0</td>`).join('')}</tr>`;
+
+        let bHtml = staff.map(s => `<tr><td class="sticky-col-1">${s.TeacherName}</td><td class="sticky-col-2 row-t">0</td>${topics.map((t, i) => `<td class="${getLvlClass(t.Level)}"><input type="checkbox" class="cb" data-t="${s.TeacherName}" data-l="${t.Level}" data-tp="${t.TopicName}" onchange="count()"></td>`).join('')}</tr>`).join('');
+
+        b.innerHTML = topCountHtml + bHtml;
+        
+        document.querySelectorAll('.cb').forEach(cb => {
+            if (caps.some(c => c.TeacherName === cb.dataset.t && c.TopicName === cb.dataset.tp && c.Level === cb.dataset.l)) cb.checked = true;
+        });
+        count();
+    }
+
+    function count() {
+        const rows = document.querySelectorAll("#cBody tr:not(.count-row-top)");
+        const colTotals = Array(document.querySelectorAll(".col-t").length).fill(0);
+        let globalTotal = 0;
+        rows.forEach(row => {
+            let rowSum = 0;
+            row.querySelectorAll(".cb").forEach((cb, i) => {
+                if(cb.checked) { rowSum++; colTotals[i]++; globalTotal++; }
+            });
+            row.querySelector(".row-t").innerText = rowSum;
+        });
+        colTotals.forEach((val, i) => { if(document.getElementById(`col-t-${i}`)) document.getElementById(`col-t-${i}`).innerText = val; });
+        document.getElementById("gT").innerText = globalTotal;
+    }
+
+    function toggleAllChecks(bool) {
+        document.querySelectorAll('.cb').forEach(cb => cb.checked = bool);
+        count();
+    }
+
+    // --- CSV 功能 ---
+    function exportCapCSV() {
+        let csv = "TeacherName,Level,TopicName\n";
+        document.querySelectorAll('.cb:checked').forEach(cb => { csv += `${cb.dataset.t},${cb.dataset.l},${cb.dataset.tp}\n`; });
+        const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `teacher_caps.csv`;
+        link.click();
+    }
+
+    function importCapCSV(input) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const lines = e.target.result.split("\n").map(l => l.split(","));
+            document.querySelectorAll('.cb').forEach(cb => cb.checked = false);
+            lines.slice(1).forEach(cols => {
+                if (cols.length < 3) return;
+                const [t, l, tp] = cols.map(v => v.trim());
+                const target = document.querySelector(`.cb[data-t="${t}"][data-l="${l}"][data-tp="${tp}"]`);
+                if (target) target.checked = true;
+            });
+            count();
+            alert("CSV 讀取完成，請按儲存！");
+            input.value = "";
+        };
+        reader.readAsText(input.files[0]);
+    }
+
+    async function doImport(s, input) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const rows = e.target.result.split(/\n/).filter(l => l.trim());
+            toggleL(true);
+            for(let r of rows) {
+                if(r.startsWith("TeacherName") || r.startsWith("Level")) continue; // 跳過 Header
+                await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action:'saveAdminEntry', targetSheet:s, data:r.split(',').map(v=>v.trim()) }) });
+            }
+            loadAll();
+        };
+        reader.readAsText(input.files[0]);
+    }
+
+    async function doAdd(s, ids) {
+        const d = ids.map(id => document.getElementById(id).value.trim());
+        if(d.some(v => !v)) return alert("請填寫內容");
+        toggleL(true);
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'saveAdminEntry', targetSheet: s, data: d }) });
+        ids.forEach(id => document.getElementById(id).value = "");
+        loadAll();
+    }
+
+    async function doDel(s, v) {
+        if(!confirm("確定刪除？")) return;
+        toggleL(true);
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteEntry', targetSheet: s, data: [v] }) });
+        loadAll();
+    }
+
+    async function doSaveCaps() {
+        const d = Array.from(document.querySelectorAll('.cb:checked')).map(c => [c.dataset.t, c.dataset.l, c.dataset.tp]);
+        toggleL(true);
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'updateAllCapabilities', data: d }) });
+        alert("儲存雲端成功！");
+        loadAll();
+    }
+
+    function showTab(id) {
+        document.querySelectorAll('.tab-content, .tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    function toggleL(s) { document.getElementById('loader').style.display = s ? 'flex' : 'none'; }
+    window.onload = loadAll;
+</script>
+</body>
+</html>

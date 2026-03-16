@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>牽引班管理系統 - Dashboard</title>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --secondary: #5f6368;
+            --success: #34a853;
+            --warning: #f9ab00;
+            --danger: #d93025;
+            --bg: #f0f2f5;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .dashboard {
+            width: 90%;
+            max-width: 1100px;
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #202124;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            color: var(--secondary);
+            font-size: 1.1em;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 25px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            border-top: 5px solid transparent;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 12px 20px rgba(0,0,0,0.1);
+        }
+
+        .card i {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .card h3 {
+            margin: 10px 0;
+            font-size: 1.4em;
+            color: #3c4043;
+        }
+
+        .card p {
+            font-size: 0.95em;
+            color: var(--secondary);
+            line-height: 1.5;
+        }
+
+        .step-num {
+            background: #e8f0fe;
+            color: var(--primary);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        /* 各卡片顏色設定 */
+        .admin { border-top-color: var(--primary); }
+        .scheduler { border-top-color: var(--warning); }
+        .classing { border-top-color: var(--success); }
+        .report { border-top-color: var(--danger); }
+
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #9aa0a6;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="header">
+        <h1>牽引班行政管理系統</h1>
+        <p>請按行政流程選擇相應模組進行操作</p>
+    </div>
+
+    <div class="grid">
+        <a href="Super_Admin.html" class="card admin">
+            <div class="step-num">1</div>
+            <i>👤</i>
+            <h3>基礎設定</h3>
+            <p>管理老師名單、各級課題定義及老師授課資格矩陣。</p>
+        </a>
+
+        <a href="Ultimate_Scheduler.html" class="card scheduler">
+            <div class="step-num">2</div>
+            <i>📅</i>
+            <h3>日子與班別編排</h3>
+            <p>設定教學輪次、上堂日期，並指派班別於特定日子修讀的課題。</p>
+        </a>
+
+        <a href="Class_Scheduling.html" class="card classing">
+            <div class="step-num">3</div>
+            <h3>老師排班</h3>
+            <i>👨‍🏫</i>
+            <p>根據資格與日子，為每堂課指派具體負責老師，處理衝突檢查。</p>
+        </a>
+
+        <a href="report.html" class="card report">
+            <div class="step-num">4</div>
+            <i>📄</i>
+            <h3>報表中心</h3>
+            <p>批量生成老師個人出勤表、班別課表及課題進度追蹤表。</p>
+        </a>
+    </div>
+
+    <div class="footer">
+        &copy; 2026 牽引班管理系統 | 學校行政組 | 當前版本 v3.0
+    </div>
+</div>
+
+</body>
+</html>

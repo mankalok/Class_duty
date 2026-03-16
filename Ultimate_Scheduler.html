@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>牽引班全自動排課系統</title>
+    <style>
+        :root { --primary: #1a73e8; --success: #34a853; --danger: #ea4335; --bg: #f8f9fa; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; padding-top: 0; }
+        
+        /* 導航列樣式 */
+        .nav-bar { background: #333; padding: 10px 20px; display: flex; align-items: center; gap: 15px; margin: 0 -20px 20px -20px; }
+        .btn-home { color: white; text-decoration: none; font-weight: bold; background: #555; padding: 5px 12px; border-radius: 4px; font-size: 14px; transition: 0.3s; }
+        .btn-home:hover { background: #666; }
+        .nav-title { color: #ccc; font-size: 14px; }
+
+        .container { max-width: 98vw; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .nav-tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 25px; }
+        .tab-btn { padding: 12px 30px; cursor: pointer; border: none; background: #eee; font-size: 16px; font-weight: bold; border-radius: 8px 8px 0 0; }
+        .tab-btn.active { background: var(--primary); color: white; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; min-width: 150px; }
+        th { background: #f1f3f4; position: sticky; top: 0; z-index: 10; font-size: 13px; }
+        .sticky-col { position: sticky; left: 0; background: white !important; font-weight: bold; z-index: 11; border-right: 2px solid #ddd; min-width: 80px; }
+
+        .date-chip { display: inline-flex; align-items: center; background: #e8f0fe; color: #1967d2; padding: 5px 12px; border-radius: 20px; margin: 3px; border: 1px solid #c2e7ff; font-size: 14px; }
+        .date-chip span { margin-left: 8px; color: var(--danger); cursor: pointer; }
+        .filter-bar { background: #f1f3f4; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; }
+        .btn { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; margin-right: 5px; }
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-green { background: var(--success); color: white; }
+        .btn-orange { background: #f39c12; color: white; }
+        .btn-gray { background: #7f8c8d; color: white; }
+
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: none; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; }
+
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar no-print">
+    <a href="index.html" class="btn-home">🏠 返主頁</a>
+    <span class="nav-title">牽引班管理系統 > 日子與班別編排 (Ultimate Scheduler)</span>
+</div>
+
+<div id="loading">⌛ <span id="loadMsg">正在讀取數據...</span></div>
+
+<div class="container">
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab(event, 'step1')">📅 1. 日期定義</button>
+        <button class="tab-btn" onclick="switchTab(event, 'step2')">📊 2. 課題矩陣</button>
+    </div>
+
+    <div id="step1" class="tab-content" style="display:block;">
+        <h2>第一步：設定各輪次日子</h2>
+        <div class="filter-bar">
+            <button class="btn btn-orange" onclick="exportCSV('round')">📤 匯出日期 CSV</button>
+            <button class="btn btn-gray" onclick="document.getElementById('csvIn1').click()">📥 匯入日期 CSV</button>
+            <input type="file" id="csvIn1" style="display:none" accept=".csv" onchange="importCSV(this, 'round')">
+        </div>
+        <table id="roundTable">
+            <thead><tr><th>輪次名稱</th><th>已選日期 (DatePicker)</th><th>新增</th><th>操作</th></tr></thead>
+            <tbody id="roundBody"></tbody>
+        </table>
+        <div style="margin-top:20px;">
+            <button class="btn btn-blue" onclick="addRoundRow()">+ 增加一輪</button>
+            <button class="btn btn-green" style="float:right;" onclick="saveRounds()">💾 儲存日期至雲端</button>
+        </div>
+    </div>
+
+    <div id="step2" class="tab-content" style="display:none;">
+        <h2>第二步：課題矩陣</h2>
+        <div class="filter-bar">
+            <strong>篩選級別：</strong>
+            <button class="btn" onclick="filterRows('ALL')">全部</button>
+            <div id="levelFilter"></div>
+            <div style="margin-left:auto">
+                <button class="btn btn-orange" onclick="exportCSV('matrix')">📤 匯出矩陣 CSV</button>
+                <button class="btn btn-gray" onclick="document.getElementById('csvIn2').click()">📥 匯入矩陣 CSV</button>
+                <input type="file" id="csvIn2" style="display:none" accept=".csv" onchange="importCSV(this, 'matrix')">
+            </div>
+        </div>
+        <div style="overflow: auto; max-height: 550px; border: 1px solid #ddd;">
+            <table><thead id="mHead"></thead><tbody id="mBody"></tbody></table>
+        </div>
+        <button class="btn btn-green" style="margin-top:20px; float:right;" onclick="saveMatrix()">💾 儲存課題至雲端</button>
+    </div>
+</div>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxHciM7aMPxYY1V8R2LY_y945MUI9o3ftFyCCrp9s55iO34UeOQN0uzpljtdcksHVSt/exec"; 
+    let db = { staff:[], topics:[], rounds:[], matrix:[], classes:[], caps:[], final:[] };
+
+    async function init() {
+        showLoading(true, "正在獲取雲端最新資料...");
+        try {
+            const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'getSystemData' }) });
+            db = await res.json();
+            renderRounds();
+            renderLevelBtns();
+        } catch(e) { alert("讀取失敗"); }
+        showLoading(false);
+    }
+
+    function switchTab(evt, id) {
+        document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).style.display = 'block';
+        evt.currentTarget.classList.add('active');
+        if(id === 'step2') renderMatrix();
+    }
+
+    // --- CSV 功能 ---
+    function exportCSV(type) {
+        let csv = "";
+        if (type === 'round') {
+            csv = "RoundName,Dates\n";
+            document.querySelectorAll('#roundBody tr').forEach(tr => {
+                const name = tr.querySelector('.r-name').value;
+                const dates = Array.from(tr.querySelectorAll('.date-chip')).map(c => c.firstChild.textContent).join('|');
+                csv += `${name},${dates}\n`;
+            });
+        } else {
+            const rounds = Array.from(document.querySelectorAll('.r-name')).map(i => i.value).filter(v=>v);
+            csv = "ClassName," + rounds.join(",") + "\n";
+            document.querySelectorAll('#mBody tr').forEach(tr => {
+                const cls = tr.dataset.cls;
+                const vals = Array.from(tr.querySelectorAll('.m-sel')).map(s => s.value);
+                csv += `${cls},${vals.join(",")}\n`;
+            });
+        }
+        const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${type}_export.csv`;
+        link.click();
+    }
+
+    function importCSV(input, type) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const rows = e.target.result.split("\n").map(r => r.split(","));
+            if (type === 'round') {
+                const body = document.getElementById('roundBody');
+                body.innerHTML = "";
+                rows.slice(1).forEach(r => {
+                    if (r.length < 2 || !r[0]) return;
+                    const tr = document.createElement('tr');
+                    const dates = r[1].split('|').filter(d=>d).map(d=>`<div class="date-chip">${d.trim()}<span onclick="this.parentElement.remove()">×</span></div>`).join('');
+                    tr.innerHTML = `<td><input type="text" class="r-name" value="${r[0]}"></td><td class="chip-container">${dates}</td><td><input type="date" onchange="addTag(this)"></td><td><button onclick="this.parentElement.parentElement.remove()">🗑️</button></td>`;
+                    body.appendChild(tr);
+                });
+            } else {
+                rows.slice(1).forEach(r => {
+                    const cls = r[0];
+                    const tr = document.querySelector(`#mBody tr[data-cls="${cls}"]`);
+                    if (tr) {
+                        const selects = tr.querySelectorAll('.m-sel');
+                        r.slice(1).forEach((val, i) => { if(selects[i]) selects[i].value = val.trim(); });
+                    }
+                });
+            }
+            alert("匯入完成！記得撳「儲存」同步到雲端。");
+            input.value = "";
+        };
+        reader.readAsText(file);
+    }
+
+    function renderRounds() {
+        const body = document.getElementById('roundBody');
+        const data = (db.rounds && db.rounds.length) ? db.rounds : [{RoundName:"", Dates:""}];
+        body.innerHTML = data.map(r => `<tr><td><input type="text" class="r-name" value="${r.RoundName || ''}"></td><td class="chip-container">${(r.Dates || '').split(',').filter(d=>d).map(d=>`<div class="date-chip">${d}<span onclick="this.parentElement.remove()">×</span></div>`).join('')}</td><td><input type="date" onchange="addTag(this)"></td><td><button onclick="this.parentElement.parentElement.remove()">🗑️</button></td></tr>`).join('');
+    }
+    function addTag(input) {
+        if(!input.value) return;
+        input.parentElement.previousElementSibling.insertAdjacentHTML('beforeend', `<div class="date-chip">${input.value}<span onclick="this.parentElement.remove()">×</span></div>`);
+        input.value = "";
+    }
+    function addRoundRow() { document.getElementById('roundBody').insertAdjacentHTML('beforeend', `<tr><td><input type="text" class="r-name"></td><td class="chip-container"></td><td><input type="date" onchange="addTag(this)"></td><td><button onclick="this.parentElement.parentElement.remove()">🗑️</button></td></tr>`); }
+
+    function renderLevelBtns() {
+        const lvls = [...new Set(db.classes.map(c => c.Level))].sort();
+        document.getElementById('levelFilter').innerHTML = lvls.map(l => `<button class="btn" onclick="filterRows('${l}')">${l}</button>`).join('');
+    }
+    function renderMatrix() {
+        const h = document.getElementById('mHead'), b = document.getElementById('mBody');
+        const rounds = Array.from(document.querySelectorAll('.r-name')).map(i => i.value).filter(v=>v);
+        h.innerHTML = `<tr><th class="sticky-col">班別</th>${rounds.map(r => `<th>${r}</th>`).join('')}</tr>`;
+        b.innerHTML = db.classes.map(c => {
+            const lvTopics = db.topics.filter(t => String(t.Level).trim() === String(c.Level).trim());
+            return `<tr data-cls="${c.ClassName}" data-lvl="${c.Level}"><td class="sticky-col">${c.ClassName}</td>${rounds.map(rn => {
+                const match = db.matrix.find(m => String(m.ClassName) === String(c.ClassName) && String(m.RoundName) === String(rn));
+                return `<td><select class="m-sel" data-cls="${c.ClassName}" data-rn="${rn}"><option value="">--</option>${lvTopics.map(t => `<option value="${t.TopicName}" ${t.TopicName===(match?match.TopicName:"")?'selected':''}>${t.TopicName}</option>`).join('')}</select></td>`;
+            }).join('')}</tr>`;
+        }).join('');
+    }
+    function filterRows(lv) { document.querySelectorAll('#mBody tr').forEach(r => r.style.display = (lv === 'ALL' || r.dataset.lvl === lv) ? '' : 'none'); }
+
+    async function api(action, data) {
+        showLoading(true, "處理中...");
+        try {
+            const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action, data }) });
+            alert(await res.text());
+            init();
+        } catch(e) { alert("操作失敗"); }
+        showLoading(false);
+    }
+    function saveRounds() { api('saveRounds', Array.from(document.querySelectorAll('#roundBody tr')).map(tr => [tr.querySelector('.r-name').value, Array.from(tr.querySelectorAll('.date-chip')).map(c=>c.firstChild.textContent).join(',')])); }
+    function saveMatrix() { api('saveMatrix', Array.from(document.querySelectorAll('.m-sel')).filter(s => s.value).map(s => [s.dataset.cls, s.dataset.rn, s.value])); }
+    function showLoading(s, m) { document.getElementById('loading').style.display = s ? 'flex' : 'none'; document.getElementById('loadMsg').textContent = m; }
+    window.onload = init;
+</script>
+</body>
+</html>
