@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>牽引班 - 第三步：老師全展開 (功能強化版)</title>
+    <style>
+        :root { --primary: #1a73e8; --success: #34a853; --danger: #ea4335; --bg: #f8f9fa; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 20px; padding-top: 0; margin-top: 0; }
+        
+        /* 導航列樣式 */
+        .nav-bar { background: #333; padding: 10px 20px; display: flex; align-items: center; gap: 15px; margin: 0 -20px 20px -20px; }
+        .btn-home { color: white; text-decoration: none; font-weight: bold; background: #555; padding: 5px 12px; border-radius: 4px; font-size: 14px; transition: 0.3s; }
+        .btn-home:hover { background: #666; }
+        .nav-title { color: #ccc; font-size: 14px; }
+
+        .container { max-width: 98vw; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        
+        /* 工具列排版 */
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; background: #eee; padding: 15px; border-radius: 8px; }
+        .filter-group { display: flex; align-items: center; gap: 5px; background: white; padding: 5px 10px; border-radius: 5px; border: 1px solid #ccc; }
+        
+        .table-wrapper { overflow: auto; max-height: 60vh; border: 1px solid #ddd; margin-top: 10px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; min-width: 160px; }
+        th { background: #f1f3f4; position: sticky; top: 0; z-index: 10; font-size: 13px; }
+        .sticky-col { position: sticky; left: 0; background: #fff !important; font-weight: bold; z-index: 11; border-right: 2px solid #ddd; }
+
+        .r-odd { background-color: #e3f2fd !important; }
+        .r-even { background-color: #f1f8e9 !important; }
+
+        .topic-tag { background: #fff9c4; font-size: 12px; padding: 4px; border-radius: 4px; display: block; margin-bottom: 5px; font-weight: bold; min-height: 32px; display: flex; align-items: center; justify-content: center; }
+        select.t-sel { width: 100%; padding: 6px; font-size: 14px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; background: white; }
+        .sync-btn { cursor: pointer; color: var(--primary); font-size: 11px; margin-top: 5px; background: white; border: 1px solid var(--primary); border-radius: 3px; width: 100%; padding: 2px; }
+        .sync-btn:hover { background: var(--primary); color: white; }
+        
+        .conflict { background: #ffcdd2 !important; border: 2px solid var(--danger) !important; }
+        
+        .stats-area { margin-top: 20px; padding: 15px; background: #eef4ff; border-radius: 8px; border: 1px solid #c2e7ff; }
+        .stats-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; font-size: 14px; }
+        .stat-tag { background: white; padding: 5px 12px; border-radius: 15px; border: 1px solid #d1d1d1; }
+        .stat-tag b { color: var(--primary); font-size: 18px; }
+
+        .btn { padding: 8px 15px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-orange { background: #f39c12; color: white; }
+        .btn-gray { background: #7f8c8d; color: white; }
+        .btn-save { background: var(--success); color: white; padding: 15px 30px; font-size: 16px; float: right; margin-top: 15px; }
+
+        #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; justify-content:center; align-items:center; z-index:9999; font-weight: bold; }
+
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar no-print">
+    <a href="index.html" class="btn-home">🏠 返主頁</a>
+    <span class="nav-title">牽引班管理系統 > 老師排班 (Class Scheduling)</span>
+</div>
+
+<div id="loading">⌛ 正在讀取雲端資料...</div>
+
+<div class="container">
+    <h2>📊 第三步：老師排班</h2>
+    
+    <div class="toolbar">
+        <div class="filter-group">
+            <strong>年級：</strong>
+            <select id="filterLevel" onchange="applyFilters()" style="width:80px;">
+                <option value="ALL">全部</option>
+                <option>P.1</option><option>P.2</option><option>P.3</option>
+                <option>P.4</option><option>P.5</option><option>P.6</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <strong>輪次：</strong>
+            <select id="filterRound" onchange="applyFilters()" style="width:100px;">
+                <option value="ALL">所有輪次</option>
+            </select>
+        </div>
+
+        <button class="btn btn-orange" onclick="exportStep3CSV()">📤 匯出排班 CSV</button>
+        <button class="btn btn-gray" onclick="document.getElementById('csvIn').click()">📥 匯入排班 CSV</button>
+        <input type="file" id="csvIn" hidden accept=".csv" onchange="importStep3CSV(this)">
+        
+        <button class="btn btn-blue" onclick="importOldData()">🔄 重新讀取雲端紀錄</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="mainTable">
+            <thead id="tHead"></thead>
+            <tbody id="tBody"></tbody>
+        </table>
+    </div>
+
+    <div class="stats-area">
+        <strong>📈 工作量實時計數：</strong>
+        <select id="staffPicker" onchange="renderStats()" style="width: 150px; margin-left: 10px; padding:5px;">
+            <option value="ALL">所有老師</option>
+        </select>
+        <div id="statsResult" class="stats-grid"></div>
+    </div>
+
+    <button class="btn btn-save" onclick="saveToClassPlan()">🚀 儲存並同步到 Class_Plan</button>
+</div>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwFpcWn2zuErCYgb7Pcc0_25rZ4uRONILyXVAqknfQ67CRDl04h8Bes-JnSp-bi16rn/exec";
+    let db = { staff:[], rounds:[], matrix:[], classes:[], caps:[], final:[] };
+
+    async function init() {
+        try {
+            const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'getSystemData' }) });
+            db = await res.json();
+            
+            const picker = document.getElementById('staffPicker');
+            db.staff.forEach(s => picker.add(new Option(s.TeacherName, s.TeacherName)));
+
+            const rdPicker = document.getElementById('filterRound');
+            db.rounds.forEach(r => rdPicker.add(new Option(r.RoundName, r.RoundName)));
+
+            renderTable();
+            importOldData(); 
+        } catch(e) { alert("讀取失敗！"); }
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    function renderTable() {
+        const h = document.getElementById('tHead'), b = document.getElementById('tBody');
+        let flatDates = [];
+        db.rounds.forEach((r, idx) => {
+            const colorClass = (idx % 2 === 0) ? 'r-odd' : 'r-even';
+            (r.Dates || "").split(',').filter(d => d).forEach(d => {
+                flatDates.push({ date: d.trim(), roundName: r.RoundName, colorClass });
+            });
+        });
+        flatDates.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        h.innerHTML = `<tr><th class="sticky-col">班別</th>${flatDates.map(fd => `<th class="${fd.colorClass} col-date" data-round="${fd.roundName}">${fd.date}<br><small>${fd.roundName}</small></th>`).join('')}</tr>`;
+
+        b.innerHTML = db.classes.map(c => {
+            return `<tr class="row-class" data-lvl="${c.Level}">
+                <td class="sticky-col">${c.ClassName}</td>
+                ${flatDates.map(fd => {
+                    const mItem = db.matrix.find(m => m.ClassName === c.ClassName && m.RoundName === fd.roundName);
+                    const topic = mItem ? mItem.TopicName : "";
+                    if(!topic) return `<td class="col-date" data-round="${fd.roundName}">--</td>`;
+
+                    const allowed = db.staff.filter(s => db.caps.some(cap => cap.TeacherName === s.TeacherName && cap.TopicName === topic));
+
+                    return `<td class="${fd.colorClass} col-date" data-round="${fd.roundName}">
+                        <div class="topic-tag">${topic}</div>
+                        <select class="t-sel" data-cls="${c.ClassName}" data-date="${fd.date}" data-topic="${topic}" data-round="${fd.roundName}" onchange="renderStats()">
+                            <option value="">--</option>
+                            ${allowed.map(t => `<option value="${t.TeacherName}">${t.TeacherName}</option>`).join('')}
+                        </select>
+                        <button class="sync-btn" onclick="syncRound('${c.ClassName}', '${fd.roundName}', this)">⚡ 同步整輪</button>
+                    </td>`;
+                }).join('')}
+            </tr>`;
+        }).join('');
+        applyFilters();
+    }
+
+    function applyFilters() {
+        const lvl = document.getElementById('filterLevel').value;
+        const rnd = document.getElementById('filterRound').value;
+
+        document.querySelectorAll('.row-class').forEach(tr => {
+            tr.style.display = (lvl === "ALL" || tr.dataset.lvl === lvl) ? "" : "none";
+        });
+
+        document.querySelectorAll('.col-date').forEach(td => {
+            td.style.display = (rnd === "ALL" || td.dataset.round === rnd) ? "" : "none";
+        });
+        renderStats();
+    }
+
+    function exportStep3CSV() {
+        let csv = "Date,ClassName,Topic,TeacherName\n";
+        document.querySelectorAll('.t-sel').forEach(s => {
+            if(s.value) csv += `${s.dataset.date},${s.dataset.cls},${s.dataset.topic},${s.value}\n`;
+        });
+        const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `step3_schedule.csv`;
+        link.click();
+    }
+
+    function importStep3CSV(input) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const rows = e.target.result.split("\n").map(r => r.split(","));
+            rows.slice(1).forEach(cols => {
+                if(cols.length < 4) return;
+                const [date, cls, topic, name] = cols.map(v => v.trim());
+                const sel = document.querySelector(`.t-sel[data-date="${date}"][data-cls="${cls}"]`);
+                if(sel) sel.value = name;
+            });
+            renderStats();
+            alert("CSV 匯入完成！");
+            input.value = "";
+        };
+        reader.readAsText(input.files[0]);
+    }
+
+    function syncRound(cls, round, btn) {
+        const val = btn.previousElementSibling.value;
+        if(!val) return alert("請先揀老師");
+        document.querySelectorAll(`.t-sel[data-cls="${cls}"][data-round="${round}"]`).forEach(s => s.value = val);
+        renderStats();
+    }
+
+    function importOldData() {
+        if(!db.final) return;
+        document.querySelectorAll('.t-sel').forEach(s => {
+            const match = db.final.find(f => String(f.Date).split('T')[0] === s.dataset.date && f.ClassName === s.dataset.cls);
+            if(match) s.value = match.TeacherName;
+        });
+        renderStats();
+    }
+
+    function renderStats() {
+        const filter = document.getElementById('staffPicker').value;
+        const counts = {}, dateMap = {};
+        const visibleSels = Array.from(document.querySelectorAll('.t-sel')).filter(s => s.closest('tr').style.display !== 'none');
+
+        document.querySelectorAll('.t-sel').forEach(s => s.classList.remove('conflict'));
+        
+        visibleSels.forEach(s => {
+            const val = s.value;
+            if(!val) return;
+            counts[val] = (counts[val] || 0) + 1;
+            const key = `${s.dataset.date}_${val}`;
+            if(dateMap[key]) {
+                s.classList.add('conflict');
+                dateMap[key].classList.add('conflict');
+            } else { dateMap[key] = s; }
+        });
+
+        const res = document.getElementById('statsResult');
+        if(filter === "ALL") {
+            res.innerHTML = db.staff.map(s => `<div class="stat-tag">${s.TeacherName}: <b>${counts[s.TeacherName] || 0}</b></div>`).join('');
+        } else {
+            res.innerHTML = `<div class="stat-tag" style="background:#fff9c4">${filter} 當前顯示節數: <b>${counts[filter] || 0}</b></div>`;
+        }
+    }
+
+    async function saveToClassPlan() {
+        const finalData = [];
+        document.querySelectorAll('.t-sel').forEach(s => {
+            if(s.value) finalData.push([s.dataset.date, "09:00", s.dataset.cls, s.dataset.topic, s.value]);
+        });
+        if(!confirm(`儲存 ${finalData.length} 條紀錄？`)) return;
+        document.getElementById('loading').style.display = 'flex';
+        try {
+            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'saveFinal', data: finalData }) });
+            alert("儲存成功！");
+        } catch(e) { alert("儲存失敗"); }
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>

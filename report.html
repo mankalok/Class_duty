@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>牽引班 - 批量報表中心</title>
+    <style>
+        :root { --primary: #1a73e8; --bg: #f8f9fa; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 20px; padding-top: 0; margin-top: 0; }
+        
+        /* 導航列樣式 */
+        .nav-bar { background: #333; padding: 10px 20px; display: flex; align-items: center; gap: 15px; margin: 0 -20px 20px -20px; }
+        .btn-home { color: white; text-decoration: none; font-weight: bold; background: #555; padding: 5px 12px; border-radius: 4px; font-size: 14px; transition: 0.3s; }
+        .btn-home:hover { background: #666; }
+        .nav-title { color: #ccc; font-size: 14px; }
+
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        .no-print-section { background: #fff; padding: 15px; border-bottom: 2px solid #eee; margin-bottom: 20px; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        /* 報表排版 */
+        .report-page { 
+            background: white; 
+            padding: 40px; 
+            margin-bottom: 30px; 
+            border: 1px solid #ddd;
+            page-break-after: always; /* 強制列印時分頁 */
+        }
+        
+        h2.report-header { border-bottom: 3px solid var(--primary); padding-bottom: 10px; color: var(--primary); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #333; padding: 12px; text-align: center; }
+        th { background: #f2f2f2; }
+
+        .btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-green { background: #34a853; color: white; }
+        .btn-export { background: #f39c12; color: white; }
+
+        /* 列印專用 CSS */
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            .no-print-section, .container { box-shadow: none; max-width: 100%; padding: 0; margin: 0; border: none; }
+            .container { background: transparent; }
+            .report-page { border: none; margin: 0; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar no-print">
+    <a href="index.html" class="btn-home">🏠 返主頁</a>
+    <span class="nav-title">牽引班管理系統 > 報表中心 (Report Center)</span>
+</div>
+
+<div class="no-print no-print-section">
+    <h2>📄 牽引班報表批量生成器</h2>
+    <p>請選擇你想生成的報表類型，系統會自動分組排版，方便你一次過列印所有分頁。</p>
+    <div class="btn-group">
+        <button class="btn btn-blue" onclick="genReport('teacher')">👨‍🏫 生成所有老師個人表</button>
+        <button class="btn btn-blue" onclick="genReport('class')">🏫 生成所有班別課表</button>
+        <button class="btn btn-blue" onclick="genReport('topic')">📚 生成所有課題進度表</button>
+        <button class="btn btn-green" onclick="window.print()">🖨️ 一鍵列印全部</button>
+        <button class="btn btn-export" onclick="exportFullCSV()">📤 匯出原始數據 CSV</button>
+    </div>
+</div>
+
+<div class="container" id="reportRenderArea">
+    <div style="text-align:center; color:#999; padding:100px;" class="no-print">
+        請點擊上方按鈕生成報表...
+    </div>
+</div>
+
+<script>
+    // 記得填返你個 URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwFpcWn2zuErCYgb7Pcc0_25rZ4uRONILyXVAqknfQ67CRDl04h8Bes-JnSp-bi16rn/exec";
+    let rawData = [];
+
+    async function fetchLatest() {
+        try {
+            const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'getSystemData' }) });
+            const db = await res.json();
+            rawData = db.final;
+        } catch(e) {
+            console.error("Fetch failed", e);
+        }
+    }
+
+    async function genReport(mode) {
+        if(rawData.length === 0) await fetchLatest();
+        const area = document.getElementById('reportRenderArea');
+        area.innerHTML = ""; 
+
+        let groups = {};
+
+        // 1. 分組邏輯
+        rawData.forEach(r => {
+            let key = "";
+            if(mode === 'teacher') key = r.TeacherName;
+            else if(mode === 'class') key = r.ClassName;
+            else if(mode === 'topic') key = r.TopicName;
+            
+            if(!groups[key]) groups[key] = [];
+            groups[key].push(r);
+        });
+
+        // 2. 排序組內日期
+        Object.keys(groups).sort().forEach(groupName => {
+            groups[groupName].sort((a,b) => new Date(a.Date) - new Date(b.Date));
+
+            // 3. 生成每一頁嘅 HTML
+            const page = document.createElement('div');
+            page.className = 'report-page';
+            
+            let titlePrefix = mode === 'teacher' ? "老師出勤表" : (mode === 'class' ? "班別課表" : "課題進度表");
+            
+            let tableHtml = `
+                <h2 class="report-header">${titlePrefix} - ${groupName}</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            ${mode === 'teacher' ? '<th>上堂班別</th>' : (mode === 'class' ? '<th>負責老師</th>' : '<th>班別</th>')}
+                            <th>教學課題</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${groups[groupName].map(item => `
+                            <tr>
+                                <td>${item.Date.split('T')[0]}</td>
+                                ${mode === 'teacher' ? `<td>${item.ClassName}</td>` : (mode === 'class' ? `<td>${item.TeacherName}</td>` : `<td>${item.ClassName}</td>`)}
+                                <td>${item.TopicName}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div style="margin-top:20px; text-align:right; font-size:12px; color:#666;">
+                    生成日期：${new Date().toLocaleDateString()} | 牽引班管理系統
+                </div>
+            `;
+            page.innerHTML = tableHtml;
+            area.appendChild(page);
+        });
+    }
+
+    function exportFullCSV() {
+        let csv = "\ufeff日期,時間,班別,課題,老師\n";
+        rawData.forEach(r => {
+            csv += `${r.Date.split('T')[0]},09:00,${r.ClassName},${r.TopicName},${r.TeacherName}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "full_report_data.csv";
+        link.click();
+    }
+
+    window.onload = fetchLatest;
+</script>
+</body>
+</html>
